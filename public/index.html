@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MERN Auth Study App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; max-width: 900px; }
+    input, button { padding: 0.5rem; margin: 0.3rem 0; width: 100%; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
+    pre { background: #f7f7f7; padding: 1rem; border-radius: 6px; overflow: auto; }
+    .muted { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script>
+    const { useState } = React;
+
+    function App() {
+      const [name, setName] = useState('');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [token, setToken] = useState(localStorage.getItem('token') || '');
+      const [output, setOutput] = useState('Ready');
+
+      async function callApi(path, method, body, requiresAuth = false) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (requiresAuth && token) headers.Authorization = 'Bearer ' + token;
+
+        const res = await fetch(path, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Request failed');
+        return data;
+      }
+
+      async function register() {
+        try {
+          const data = await callApi('/api/auth/register', 'POST', { name, email, password });
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+          setOutput(JSON.stringify(data, null, 2));
+        } catch (e) {
+          setOutput(e.message);
+        }
+      }
+
+      async function login() {
+        try {
+          const data = await callApi('/api/auth/login', 'POST', { email, password });
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+          setOutput(JSON.stringify(data, null, 2));
+        } catch (e) {
+          setOutput(e.message);
+        }
+      }
+
+      async function myProfile() {
+        try {
+          const data = await callApi('/api/auth/me', 'GET', null, true);
+          setOutput(JSON.stringify(data, null, 2));
+        } catch (e) {
+          setOutput(e.message);
+        }
+      }
+
+      async function adminStats() {
+        try {
+          const data = await callApi('/api/admin/stats', 'GET', null, true);
+          setOutput(JSON.stringify(data, null, 2));
+        } catch (e) {
+          setOutput(e.message);
+        }
+      }
+
+      function logout() {
+        localStorage.removeItem('token');
+        setToken('');
+        setOutput('Logged out');
+      }
+
+      return React.createElement('div', null,
+        React.createElement('h1', null, 'MERN Auth + Authorization Study App'),
+        React.createElement('p', { className: 'muted' }, 'No bundlers/scaffolding: Express API + React CDN UI.'),
+        React.createElement('div', { className: 'row' },
+          React.createElement('div', { className: 'card' },
+            React.createElement('h3', null, 'Auth Form'),
+            React.createElement('input', { placeholder: 'Name (for register)', value: name, onChange: e => setName(e.target.value) }),
+            React.createElement('input', { placeholder: 'Email', value: email, onChange: e => setEmail(e.target.value) }),
+            React.createElement('input', { placeholder: 'Password', type: 'password', value: password, onChange: e => setPassword(e.target.value) }),
+            React.createElement('button', { onClick: register }, 'Register'),
+            React.createElement('button', { onClick: login }, 'Login'),
+            React.createElement('button', { onClick: logout }, 'Logout')
+          ),
+          React.createElement('div', { className: 'card' },
+            React.createElement('h3', null, 'Protected Requests'),
+            React.createElement('button', { onClick: myProfile }, 'GET /api/auth/me'),
+            React.createElement('button', { onClick: adminStats }, 'GET /api/admin/stats'),
+            React.createElement('p', { className: 'muted' }, token ? 'Token saved in localStorage.' : 'Not authenticated.')
+          )
+        ),
+        React.createElement('h3', null, 'Output'),
+        React.createElement('pre', null, output)
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
